@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!-- This is built from a template for a generic Internet Draft. Suggestions for
+     improvement welcome - write to Brian Carpenter, brian.e.carpenter @ gmail.com -->
+<!-- This can be converted using the Web service at http://xml.resource.org/experimental.html
+     (which supports the latest, sometimes undocumented and under-tested, features.) -->
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+<?rfc toc="yes"?>
+<!-- You want a table of contents -->
+<?rfc symrefs="yes"?>
+<!-- Use symbolic labels for references -->
+<?rfc sortrefs="yes"?>
+<!-- This sorts the references -->
+<?rfc iprnotified="no" ?>
+<!-- Change to "yes" if someone has disclosed IPR for the draft -->
+<?rfc compact="yes"?>
+<!-- This defines the specific filename and version number of your draft (and inserts the appropriate IETF boilerplate -->
+<rfc category="std" docName="draft-mahesh-netconf-binary-encoding-00"
+     ipr="trust200902" updates="6241 (if approved)">
+  <front>
+    <title abbrev="Binary Encoding">Binary Encoding for NETCONF</title>
+
+    <author fullname="Mahesh Jethanandani" initials="M."
+            surname="Jethanandani">
+      <organization/>
+
+      <address>
+        <email>mjethanandani@gmail.com</email>
+      </address>
+    </author>
+
+    <author fullname="Jason Lam" initials="J." surname="Lam">
+      <organization>Cisco Systems, Inc.</organization>
+
+      <address>
+        <email>lamj@cisco.com</email>
+      </address>
+    </author>
+
+    <author fullname="Alfred Leung" initials="A." surname="Leung">
+      <organization>Cisco Systems, Inc.</organization>
+
+      <address>
+        <email>alfleung@cisco.com</email>
+      </address>
+    </author>
+
+    <date day="5" month="March" year="2018"/>
+
+    <area>Operations and Management Area</area>
+
+    <workgroup>NETCONF WG</workgroup>
+
+    <abstract>
+      <t>This document describes a method by which a NETCONF [RFC6241] client
+      and server can negotiate an alternate form of encoding.</t>
+
+      <t>This document updates RFC 6241.</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section anchor="intro" title="Introduction">
+      <t><xref target="RFC6241">NETCONF</xref>, by default, supports XML
+      encoding for its payload. However, XML can be very verbose, specially
+      for operational data. This document proposes a mechanism by which
+      clients and servers can negotiate an alternate form of encoding, e.g.
+      binary encoding, and use that to exchange data. Binary encoding can
+      reduce the physical size of the data exchanged, in some cases by as much
+      as 66%, while preserving the original data.</t>
+
+      <t>Several encoding mechanisms have been proposed, including <xref
+      target="RFC7049">CBOR</xref> and <xref target="RFC8259">JSON </xref>.
+      This document does not advocate any particular encoding format. Instead,
+      it leaves it up to the negotiation between client and server to decide
+      the form of encoding. For an example of how to encode YANG in CBOR
+      format, see <xref target="I-D.ietf-core-yang-cbor">CBOR Encoding of Data
+      Modeled with YANG</xref> and <xref target="RFC7951">JSON Encoding of
+      Data Modeled with YANG</xref>.</t>
+
+      <t>This document updates <xref target="RFC6241">NETCONF</xref>.</t>
+
+      <section title="Definitions and Acronyms"/>
+
+      <!---->
+    </section>
+
+    <!---->
+
+    <section anchor="problem" title="Protocol Negotiation">
+      <t>NETCONF clients and servers exchange a hello as part of establishing
+      a connection. As part of the hello exchange, each of them advertises
+      their set of capabilities. These new capabilities of alternate forms of
+      encoding are advertised as part of the hello exchange. When the client
+      is ready to switch to a new form of encoding, it request the new
+      operation defined below. Once the server has responded with an
+      &lt;ok&gt; response, both sides can switch to the new form of encoding.
+      Thereafter, the data above the Message layer in Figure 1 of <xref
+      target="RFC6241">NETCONF</xref>, would in the form of new encoding.</t>
+
+      <t>This draft suggests advertisement of the following additional
+      capability.</t>
+
+      <section title="Encoding">
+        <section title="Overview">
+          <t>The :encoding capability indicates what encoding format each side
+          is willing to support. If the client and server are capable of
+          supporting multiple forms of encoding, they can list each of them.
+          There is no need to include xml in the list, as that is supported by
+          default.</t>
+        </section>
+
+        <section title="Dependencies">
+          <t>None.</t>
+        </section>
+
+        <section title="Capability Identifier">
+          <t>The :encoding capability is identfied by the following capability
+          string:</t>
+
+          <t>urn:ietf:params:netconf:capability:encoding:1.0?format={name,
+          ...}</t>
+
+          <t>The :encoding capability URI MUST contain a "format" argument
+          assigned a comma-separated list of formats supported by the device.
+          For the list of supported formats, this document requests the
+          creation of a new registry. See IANA Considerations for details.</t>
+
+          <t>For example:</t>
+
+          <t>urn:ietf:params:netconf:capability:encoding:1.0?format=cbor,gpb,thrift</t>
+        </section>
+
+        <section title="New Operation">
+          <section title="&lt;activate&gt;">
+            <t>Description:</t>
+
+            <t>After each side has exchanged capabilities, a client can
+            initiate a request to switch to a new encoding format using the
+            &lt;activate&gt; operation. To keep this simple, the client should
+            make this request only if there are no outstanding requests
+            pending, e.g. right after the "hello" exchange.</t>
+
+            <t>Parameters:</t>
+
+            <t>encoding:</t>
+
+            <t>The &lt;activate&gt; operation instructs the server to switch
+            to the new binary format. If the server does not support the new
+            binary format or is unable to switch to the new binary format for
+            any reason, it MUST fail with the &lt;error-tag&gt; value of
+            "not-supported" and keep the existing encoding format it is
+            using.</t>
+
+            <t>If the system does not have the :encoding capability, the
+            &lt;activate&gt; operation is not available. If there is a desire
+            to fall back to default encoding of XML, the client needs to
+            terminate the existing connection and establish a new
+            connection.</t>
+
+            <t>Positive Response:</t>
+
+            <t>If the device is able to satisfy the requests, an
+            &lt;rpc-reply&gt; is sent that contains an &lt;ok&gt; element.</t>
+
+            <t>Negative Response:</t>
+
+            <t>An &lt;rpc-error&gt; element is included in the
+            &lt;rpc-reply&gt; with the &lt;type&gt; element set to
+            "not-supported". The &lt;error-tag&gt; element must be set to
+            "server-error".</t>
+
+            <t>An example of what the exchange might look like is as
+            follows:</t>
+
+            <t>Before changing the encoding mechanism</t>
+
+            <t><figure>
+                <artwork><![CDATA[<rpc message-id="101" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+<get-config>
+  <source>
+    <running/>
+  </source>
+  <filter type="subtree">
+        <interface-configurations xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-ifmgr-cfg">
+     <interface-configuration>
+      <active>act</active>
+      <interface-name>GigabitEthernet0/0/0/0</interface-name>
+     </interface-configuration>
+    </interface-configurations>
+  </filter>
+</get-config>
+</rpc> ]]></artwork>
+              </figure></t>
+
+            <t>RPC request to change encoding</t>
+
+            <t><figure>
+                <artwork><![CDATA[<rpc message-id="102"
+  xmlns="urn:ietf:params:xml:ns:netconf:base:1.0?>
+  <activate>
+    <encoding>json</encoding>
+  </activate>
+</rpc>
+
+<rpc-reply message-id="102"
+  xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <ok/>
+</rpc-reply>]]></artwork>
+              </figure></t>
+
+            <t>The same request would now look something like this.</t>
+
+            <t><figure>
+                <artwork><![CDATA[<rpc message-id="103" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+{
+  "ietf-netconf:get-config": {
+    "source": {
+      "running": null
+   },
+    "filter": {
+      "interface-configurations": {
+        ?xmlns?:"http://cisco.com/ns/yang/Cisco-IOS-XR-ifmgr-cfg?,
+        "interface-configuration": {
+          "active": "act",
+          "interface-name": "GigabitEthernet0/0/0/0"
+        }
+      }
+    }
+  }
+}
+</rpc>
+]]></artwork>
+              </figure></t>
+
+            <t>with the reply coming back as</t>
+
+            <t><figure>
+                <artwork><![CDATA[<rpc-reply message-id="103"
+    xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+ <ok/>
+</rpc-reply>]]></artwork>
+              </figure></t>
+          </section>
+        </section>
+      </section>
+    </section>
+
+    <!---->
+
+    <section anchor="security" title="Security Considerations"/>
+
+    <section anchor="iana" title="IANA Considerations">
+      <t>This document registers a URI and requests the creation of a new
+      registry.</t>
+
+      <section title="NETCONF Capability URNs">
+        <t>This document requests the registry of an URI in the <xref
+        target="RFC3688">IETF XML registry</xref>. The IANA registry "Network
+        Configuration Protocol (NETCONF) Capability URNs" needs to be updated
+        to include the following capability.</t>
+
+        <t><figure>
+            <artwork><![CDATA[Index
+    Capability Identifier
+-------------------------
+:encoding
+    urn:ietf:params:netconf:capability:encoding:1.0]]></artwork>
+          </figure></t>
+      </section>
+
+      <section title="New Registry">
+        <t>The document also requests the creation of a new registry, called
+        "Network Configuration Protocol (NETCONF) Encoding formats", that
+        should be populated with the following entries.</t>
+
+        <t><figure>
+            <artwork><![CDATA[Encoding Formats
+----------------
+cbor
+json
+gpb
+thrift]]></artwork>
+          </figure></t>
+      </section>
+    </section>
+
+    <section anchor="ack" title="Acknowledgements">
+      <t>The authors would like to thank Juergen Schoenwaeider for his
+      comments on the draft.</t>
+    </section>
+
+    <!---->
+  </middle>
+
+  <back>
+    <references title="Normative References">
+      <?rfc include='reference.RFC.3688'?>
+
+      <?rfc include='reference.RFC.6241'?>
+
+      <?rfc include='reference.RFC.6242'?>
+
+      <?rfc include='reference.RFC.7049'?>
+
+      <?rfc include='reference.RFC.8259'?>
+    </references>
+
+    <references title="Informative References">
+      <?rfc include='reference.I-D.ietf-core-yang-cbor'?>
+
+      <?rfc include='reference.RFC.7951'?>
+    </references>
+  </back>
+</rfc>
